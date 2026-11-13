@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendar</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E.i%7Bfill:%231a1a1a%7D@media (prefers-color-scheme:dark)%7B.i%7Bfill:%23ececec%7D%7D%3C/style%3E%3Cpath fill-rule='evenodd' class='i' d='M11 5h10a7 7 0 0 1 7 7v8a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7v-8a7 7 0 0 1 7-7ZM8 10.2h16v1.8H8ZM16 15.6a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8Z'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #fafafa;
+    --text: #1a1a1a;
+    --subtle: #999;
+    --faint: #d4d4d4;
+    --line: #e8e8e8;
+    --hover: #f0f0f0;
+    --ev-1: #1a1a1a;
+    --ev-2: #4a72c4;
+    --ev-3: #3e8e5f;
+    --ev-4: #b97e35;
+    --ev-5: #c05c5c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg: #161616;
+      --text: #ececec;
+      --subtle: #777;
+      --faint: #3d3d3d;
+      --line: #262626;
+      --hover: #1f1f1f;
+      --ev-1: #ececec;
+      --ev-2: #7ba3e8;
+      --ev-3: #6fc491;
+      --ev-4: #e0b070;
+      --ev-5: #e08a8a;
+    }
+  }
+  [data-theme="dark"] {
+    --bg: #161616;
+    --text: #ececec;
+    --subtle: #777;
+    --faint: #3d3d3d;
+    --line: #262626;
+    --hover: #1f1f1f;
+    --ev-1: #ececec;
+    --ev-2: #7ba3e8;
+    --ev-3: #6fc491;
+    --ev-4: #e0b070;
+    --ev-5: #e08a8a;
+  }
+  [data-theme="light"] {
+    --bg: #fafafa;
+    --text: #1a1a1a;
+    --subtle: #999;
+    --faint: #d4d4d4;
+    --line: #e8e8e8;
+    --hover: #f0f0f0;
+    --ev-1: #1a1a1a;
+    --ev-2: #4a72c4;
+    --ev-3: #3e8e5f;
+    --ev-4: #b97e35;
+    --ev-5: #c05c5c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { height: 100%; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 56px 24px 48px;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+
+  main { width: 100%; max-width: 760px; }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .title { display: flex; align-items: baseline; gap: 10px; }
+  h1 {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  h1 .year { color: var(--subtle); font-weight: 500; }
+
+  .controls { display: flex; align-items: center; gap: 4px; }
+  .ctl {
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--subtle);
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    transition: color .15s ease, background .15s ease;
+  }
+  .ctl:hover { color: var(--text); background: var(--hover); }
+  .ctl.arrow { font-size: 15px; padding: 4px 9px; }
+  .views {
+    display: flex;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 2px;
+    gap: 2px;
+    margin-left: 8px;
+  }
+  .views button {
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 12px;
+    color: var(--subtle);
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 5px;
+    transition: color .15s ease, background .15s ease;
+  }
+  .views button.active { background: var(--hover); color: var(--text); }
+
+  /* ---------- month grid ---------- */
+  .weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    margin-bottom: 6px;
+  }
+  .weekdays span {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--subtle);
+    text-align: center;
+    letter-spacing: .04em;
+  }
+
+  #grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .cell {
+    background: var(--bg);
+    min-height: 104px;
+    padding: 6px;
+    cursor: pointer;
+    transition: background .12s ease;
+  }
+  .cell:hover { background: var(--hover); }
+  .cell.other .dnum { color: var(--faint); }
+  .cell.sel { background: var(--hover); }
+
+  .dnum {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    border-radius: 50%;
+    margin-bottom: 4px;
+  }
+  .cell.today .dnum {
+    background: var(--text);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .pills { display: flex; flex-direction: column; gap: 2px; }
+  .pill {
+    font-size: 11px;
+    line-height: 1.6;
+    padding: 0 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--pc);
+    background: color-mix(in srgb, var(--pc) 13%, transparent);
+  }
+  .pill.allday {
+    background: var(--pc);
+    color: var(--bg);
+    font-weight: 500;
+  }
+  .pill .pt { margin-right: 3px; font-variant-numeric: tabular-nums; }
+  .more { font-size: 10.5px; color: var(--subtle); padding: 0 5px; }
+
+  /* ---------- day panel ---------- */
+  .panel { margin-top: 22px; }
+  .panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 2px;
+  }
+  h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .panel-head .rel { font-size: 12px; color: var(--subtle); }
+
+  .ev { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .ev:last-of-type { border-bottom: none; }
+  .evdot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--pc); }
+  .evtime {
+    width: 64px;
+    flex: none;
+    font-size: 12px;
+    color: var(--subtle);
+    font-variant-numeric: tabular-nums;
+  }
+  .evtext { flex: 1; font-size: 14px; overflow-wrap: anywhere; cursor: text; }
+  .ev .delete {
+    border: none; background: none;
+    color: var(--faint); font-size: 16px;
+    cursor: pointer; opacity: 0;
+    padding: 2px 6px;
+    transition: opacity .15s ease, color .15s ease;
+  }
+  .ev:hover .delete, .ev .delete:focus-visible { opacity: 1; }
+  .ev .delete:hover { color: var(--text); }
+  .evtext-input {
+    flex: 1;
+    border: none; outline: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit; font-size: 14px;
+    padding: 0;
+  }
+
+  .composer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 0;
+  }
+  .composer .plus { color: var(--subtle); font-size: 16px; user-select: none; }
+  #add {
+    flex: 1;
+    border: none; outline: none;
+    background: transparent;
+    color: var(--text);
+    font: inherit; font-size: 14px;
+    caret-color: var(--text);
+  }
+  #add::placeholder { color: var(--faint); }
+  .dots { display: flex; gap: 6px; }
+  .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: var(--pc);
+    opacity: .35;
+    transition: opacity .15s ease, transform .15s ease;
+    padding: 0;
+  }
+  .dot:hover { opacity: .7; }
+  .dot.on { opacity: 1; transform: scale(1.15); }
+  .dot.on::after {}
+
+  .none { color: var(--faint); font-size: 13px; padding: 18px 0 8px; }
+
+  /* ---------- agenda view ---------- */
+  #agenda { display: none; }
+  .ag-date { font-size: 12px; font-weight: 600; color: var(--subtle); letter-spacing: .03em; padding: 22px 0 6px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .ag-date:first-child { padding-top: 6px; }
+  .ag-date .today-tag { color: var(--text); font-weight: 500; }
+  #agenda .ev { padding: 11px 0; }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 28px;
+  }
+  .hint { font-size: 11.5px; color: var(--faint); }
+  kbd { font-family: inherit; }
+
+  @media (max-width: 640px) {
+    body { padding: 24px 12px 32px; }
+    .cell { min-height: 64px; padding: 4px; }
+    .dnum { width: 20px; height: 20px; font-size: 11px; }
+    .pill { font-size: 9.5px; line-height: 1.5; padding: 0 4px; }
+    .pt { display: none; }
+    h1 { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="title"><h1 id="title"></h1></div>
+    <div class="controls">
+      <button class="ctl arrow" id="prev" aria-label="Previous month">‹</button>
+      <button class="ctl" id="today">Today</button>
+      <button class="ctl arrow" id="next" aria-label="Next month">›</button>
+      <div class="views">
+        <button data-view="month" class="active">Month</button>
+        <button data-view="agenda">Agenda</button>
+      </div>
+    </div>
+  </header>
+
+  <section id="monthView">
+    <div class="weekdays" id="weekdays"></div>
+    <div id="grid"></div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2 id="selTitle"></h2>
+        <span class="rel" id="selRel"></span>
+      </div>
+      <div id="evlist"></div>
+      <div class="composer">
+        <span class="plus">+</span>
+        <input id="add" type="text" placeholder="Add event — try “3pm Gym”" autocomplete="off" maxlength="200">
+        <div class="dots" id="dots"></div>
+      </div>
+      <p class="none" id="dayEmpty" style="display:none">No events</p>
+    </div>
+  </section>
+
+  <section id="agenda"></section>
+
+  <footer>
+    <span class="hint"><kbd>←</kbd> <kbd>→</kbd> months · <kbd>T</kbd> today</span>
+    <button class="ctl" id="theme">Theme</button>
+  </footer>
+</main>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const grid = $('#grid'), add = $('#add'), evlist = $('#evlist');
+
+  let events = JSON.parse(localStorage.getItem('cal-events') || '[]');
+  const save = () => localStorage.setItem('cal-events', JSON.stringify(events));
+
+  // ---------- state ----------
+  const today = new Date();
+  let view = 'month';
+  let curY = today.getFullYear(), curM = today.getMonth(); // shown month
+  const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let sel = key(today);          // selected date key
+  let color = '1';               // composer color
+  let editingId = null;
+
+  const COLORS = {1:'--ev-1',2:'--ev-2',3:'--ev-3',4:'--ev-4',5:'--ev-5'};
+
+  const byDate = {};
+  events.forEach(e => (byDate[e.date] = byDate[e.date] || []).push(e));
+  Object.values(byDate).forEach(list =>
+    list.sort((a,b) => (a.time||'').localeCompare(b.time||'') || a.text.localeCompare(b.text)));
+
+  const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
+  const fmtTime = t => {
+    if (!t) return 'All-day';
+    const [h,m] = t.split(':').map(Number);
+    return new Date(2000,0,1,h,m).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  };
+
+  // parse leading time token: "3pm Gym", "14:30 standup", "9:15 am call"
+  function splitTime(str) {
+    const m = str.match(/^\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b[\s,–-]*/i);
+    if (!m) return { time:'', text:str.trim() };
+    let h = +m[1];
+    const mm = m[2] ? +m[2] : 0;
+    const ap = m[3] && m[3].toLowerCase();
+    const looksLikeTime = ap || (m[2] && h <= 23 && mm < 60);
+    if (!looksLikeTime) return { time:'', text:str.trim() };
+    if (ap === 'pm' && h < 12) h += 12;
+    if (ap === 'am' && h === 12) h = 0;
+    if (h > 23 || mm > 59) return { time:'', text:str.trim() };
+    return { time:`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,
+             text:str.slice(m[0].length).trim() || str.trim() };
+  }
+
+  // ---------- header ----------
+  function renderTitle() {
+    const d = new Date(curY, curM, 1);
+    const label = d.toLocaleDateString(undefined, { month:'long' });
+    $('#title').innerHTML = view === 'month'
+      ? `${label} <span class="year">${curY}</span>`
+      : `Agenda`;
+  }
+
+  function setView(v) {
+    view = v;
+    document.querySelectorAll('.views button').forEach(b =>
+      b.classList.toggle('active', b.dataset.view === v));
+    $('#monthView').style.display = v === 'month' ? 'block' : 'none';
+    $('#agenda').style.display = v === 'agenda' ? 'block' : 'none';
+    render();
+  }
+  document.querySelectorAll('.views button').forEach(b =>
+    b.onclick = () => setView(b.dataset.view));
+
+  $('#prev').onclick = () => { curM--; if (curM < 0) { curM = 11; curY--; } render(); };
+  $('#next').onclick = () => { curM++; if (curM > 11) { curM = 0; curY++; } render(); };
+  $('#today').onclick = () => {
+    curY = today.getFullYear(); curM = today.getMonth();
+    sel = key(today);
+    if (view !== 'month') setView('month'); else render();
+  };
+
+  // ---------- month grid ----------
+  function renderGrid() {
+    grid.innerHTML = '';
+    const first = new Date(curY, curM, 1);
+    const offset = (first.getDay() + 6) % 7;            // Monday start
+    const days = new Date(curY, curM + 1, 0).getDate();
+    const start = 1 - offset;
+    const cells = Math.ceil((offset + days) / 7) * 7;
+
+    for (let i = 0; i < cells; i++) {
+      const d = new Date(curY, curM, start + i);
+      const k = key(d);
+      const inMonth = d.getMonth() === curM;
+      const isToday = k === key(today);
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (inMonth ? '' : ' other') +
+                       (isToday ? ' today' : '') + (k === sel ? ' sel' : '');
+      cell.onclick = () => { sel = k; render(); };
+
+      const num = document.createElement('div');
+      num.className = 'dnum';
+      num.textContent = d.getDate();
+      cell.append(num);
+
+      const list = byDate[k] || [];
+      const pills = document.createElement('div');
+      pills.className = 'pills';
+      list.slice(0, 3).forEach(e => {
+        const p = document.createElement('div');
+        p.className = 'pill' + (e.time ? '' : ' allday');
+        p.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
+        if (e.time) {
+          const t = document.createElement('span');
+          t.className = 'pt';
+          t.textContent = fmtTime(e.time).replace(/\s?(am|pm)/i, '');
+          p.append(t);
+        }
+        p.append(e.text);
+        p.onclick = ev => { ev.stopPropagation(); sel = k; render(); };
+        pills.append(p);
+      });
+      if (list.length > 3) {
+        const more = document.createElement('div');
+        more.className = 'more';
+        more.textContent = `+${list.length - 3} more`;
+        pills.append(more);
+      }
+      cell.append(pills);
+      grid.append(cell);
+    }
+  }
+
+  // ---------- day panel ----------
+  function renderPanel() {
+    const d = parseKey(sel);
+    $('#selTitle').textContent = d.toLocaleDateString(undefined,
+      { weekday:'long', month:'long', day:'numeric' });
+    const diff = Math.round((d - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 864e5);
+    $('#selRel').textContent = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' :
+                               diff === -1 ? 'Yesterday' : '';
+
+    evlist.innerHTML = '';
+    const list = byDate[sel] || [];
+    $('#dayEmpty').style.display = list.length ? 'none' : 'block';
+
+    list.forEach(e => {
+      const row = document.createElement('div');
+      row.className = 'ev';
+      row.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
+
+      row.append(Object.assign(document.createElement('span'), {className:'evdot'}));
+      row.append(Object.assign(document.createElement('span'),
+        {className:'evtime', textContent: fmtTime(e.time)}));
+
+      const txt = Object.assign(document.createElement('span'),
+        {className:'evtext', textContent: e.text, title: 'Click to edit'});
+      txt.ondblclick = () => startEdit(e);
+      row.append(txt);
+
+      const del = document.createElement('button');
+      del.className = 'delete'; del.textContent = '×';
+      del.setAttribute('aria-label','Delete');
+      del.onclick = () => {
+        events = events.filter(x => x.id !== e.id); save(); refresh();
+      };
+      row.append(del);
+      evlist.append(row);
+    });
+  }
+
+  function startEdit(e) {
+    if (editingId) render();
+    editingId = e.id;
+    const row = [...evlist.children].find(r => r.querySelector('.evtext')?.textContent === e.text);
+    if (!row) return;
+    row.innerHTML = '';
+    const inp = document.createElement('input');
+    inp.className = 'evtext-input';
+    inp.value = (e.time ? fmtTime(e.time) + ' ' : '') + e.text;
+    inp.maxLength = 200;
+    const commit = () => {
+      const {time, text} = splitTime(inp.value);
+      if (text) { e.text = text; if (time) e.time = time; }
+      editingId = null; save(); refresh();
+    };
+    inp.onkeydown = ev => {
+      if (ev.key === 'Enter') commit();
+      if (ev.key === 'Escape') { editingId = null; render(); }
+    };
+    inp.onblur = commit;
+    row.append(inp);
+    inp.focus(); inp.select();
+  }
+
+  // ---------- composer ----------
+  const dots = $('#dots');
+  for (let i = 1; i <= 5; i++) {
+    const b = document.createElement('button');
+    b.className = 'dot' + (i === 1 ? ' on' : '');
+    b.style.setProperty('--pc', `var(${COLORS[i]})`);
+    b.setAttribute('aria-label', `Color ${i}`);
+    b.onclick = () => { color = String(i);
+      dots.querySelectorAll('.dot').forEach((d,j) => d.classList.toggle('on', j === i-1)); };
+    dots.append(b);
+  }
+
+  function addEvent() {
+    const v = add.value.trim();
+    if (!v) return;
+    const {time, text} = splitTime(v);
+    events.push({ id: Date.now() + '' + Math.random().toString(36).slice(2,6),
+                  date: sel, time, text, color });
+    add.value = '';
+    save();
+    refresh();
+  }
+  add.onkeydown = e => {
+    if (e.key === 'Enter') addEvent();
+    if (e.key === 'Escape') { add.value = ''; add.blur(); }
+  };
+
+  // ---------- agenda ----------
+  function renderAgenda() {
+    const ag = $('#agenda');
+    ag.innerHTML = '';
+    const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const upcoming = events
+      .filter(e => e.date >= key(start))
+      .sort((a,b) => a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||''));
+
+    if (!upcoming.length) {
+      ag.innerHTML = '<p class="none" style="padding-top:32px">Nothing scheduled</p>';
+      return;
+    }
+    let last = '';
+    upcoming.forEach(e => {
+      if (e.date !== last) {
+        last = e.date;
+        const d = parseKey(e.date);
+        const h = document.createElement('div');
+        h.className = 'ag-date';
+        const isToday = e.date === key(start);
+        h.innerHTML = d.toLocaleDateString(undefined,
+          { weekday:'short', month:'short', day:'numeric' }) + (isToday ? ' · <span class="today-tag">Today</span>' : '');
+        h.onclick = () => {
+          const [y,m] = e.date.split('-').map(Number);
+          curY = y; curM = m - 1; sel = e.date; setView('month');
+        };
+        ag.append(h);
+      }
+      const row = document.createElement('div');
+      row.className = 'ev';
+      row.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
+      row.append(Object.assign(document.createElement('span'), {className:'evdot'}));
+      row.append(Object.assign(document.createElement('span'),
+        {className:'evtime', textContent: fmtTime(e.time)}));
+      row.append(Object.assign(document.createElement('span'),
+        {className:'evtext', textContent: e.text}));
+      ag.append(row);
+    });
+  }
+
+  // ---------- render & shortcuts ----------
+  function refresh() {
+    // rebuild index
+    for (const k in byDate) delete byDate[k];
+    events.forEach(e => (byDate[e.date] = byDate[e.date] || []).push(e));
+    Object.values(byDate).forEach(l =>
+      l.sort((a,b) => (a.time||'').localeCompare(b.time||'') || a.text.localeCompare(b.text)));
+    render();
+  }
+
+  function render() {
+    renderTitle();
+    if (view === 'month') { renderGrid(); renderPanel(); }
+    else renderAgenda();
+  }
+
+  // weekday labels (Monday first)
+  const wd = $('#weekdays');
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(2024, 0, 1 + i); // 2024-01-01 is a Monday
+    const s = document.createElement('span');
+    s.textContent = d.toLocaleDateString(undefined, { weekday:'short' }).slice(0,2);
+    wd.append(s);
+  }
+
+  document.addEventListener('keydown', e => {
+    const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+    if (typing) return;
+    if (e.key === 'ArrowLeft') $('#prev').click();
+    if (e.key === 'ArrowRight') $('#next').click();
+    if (e.key.toLowerCase() === 't') $('#today').click();
+  });
+
+  // ---------- theme ----------
+  const themeBtn = $('#theme');
+  function applyTheme(t) {
+    if (t) document.documentElement.dataset.theme = t;
+    else delete document.documentElement.dataset.theme;
+    localStorage.setItem('theme', t || '');
+  }
+  themeBtn.onclick = () => {
+    const cur = document.documentElement.dataset.theme ||
+      (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    applyTheme(cur === 'dark' ? 'light' : 'dark');
+  };
+  const saved = localStorage.getItem('theme');
+  if (saved) { applyTheme(saved); themeBtn.textContent = saved === 'dark' ? 'Light' : 'Dark'; }
+
+  render();
+})();
+</script>
+</body>
+</html>
