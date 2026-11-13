@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Calendar</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cstyle%3E.i%7Bfill:%231a1a1a%7D@media (prefers-color-scheme:dark)%7B.i%7Bfill:%23ececec%7D%7D%3C/style%3E%3Cpath fill-rule='evenodd' class='i' d='M11 5h10a7 7 0 0 1 7 7v8a7 7 0 0 1-7 7H11a7 7 0 0 1-7-7v-8a7 7 0 0 1 7-7ZM8 10.2h16v1.8H8ZM16 15.6a3.4 3.4 0 1 0 0 6.8a3.4 3.4 0 1 0 0-6.8Z'/%3E%3C/svg%3E">
 <style>
@@ -73,6 +73,7 @@
     justify-content: center;
     padding: 56px 24px 48px;
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
     transition: background .25s ease, color .25s ease;
   }
 
@@ -84,6 +85,7 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    gap: 12px;
   }
   .title { display: flex; align-items: baseline; gap: 10px; }
   h1 {
@@ -152,6 +154,7 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     overflow: hidden;
+    touch-action: pan-y;
   }
 
   .cell {
@@ -202,6 +205,9 @@
   .pill .pt { margin-right: 3px; font-variant-numeric: tabular-nums; }
   .more { font-size: 10.5px; color: var(--subtle); padding: 0 5px; }
 
+  .minidots { display: none; gap: 3px; justify-content: center; flex-wrap: wrap; }
+  .minidot { width: 5px; height: 5px; border-radius: 50%; background: var(--pc); }
+
   /* ---------- day panel ---------- */
   .panel { margin-top: 22px; }
   .panel-head {
@@ -209,9 +215,12 @@
     align-items: baseline;
     justify-content: space-between;
     margin-bottom: 2px;
+    gap: 8px;
   }
   h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
   .panel-head .rel { font-size: 12px; color: var(--subtle); }
+
+  .sheet-grip { display: none; }
 
   .ev { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
   .ev:last-of-type { border-bottom: none; }
@@ -224,15 +233,17 @@
     font-variant-numeric: tabular-nums;
   }
   .evtext { flex: 1; font-size: 14px; overflow-wrap: anywhere; cursor: text; }
-  .ev .delete {
+  .ev .delete, .ev .edit {
     border: none; background: none;
     color: var(--faint); font-size: 16px;
     cursor: pointer; opacity: 0;
     padding: 2px 6px;
+    border-radius: 6px;
     transition: opacity .15s ease, color .15s ease;
   }
-  .ev:hover .delete, .ev .delete:focus-visible { opacity: 1; }
-  .ev .delete:hover { color: var(--text); }
+  .ev:hover .delete, .ev:hover .edit,
+  .ev .delete:focus-visible, .ev .edit:focus-visible { opacity: 1; }
+  .ev .delete:hover, .ev .edit:hover { color: var(--text); background: var(--hover); }
   .evtext-input {
     flex: 1;
     border: none; outline: none;
@@ -257,8 +268,22 @@
     color: var(--text);
     font: inherit; font-size: 14px;
     caret-color: var(--text);
+    min-width: 0;
   }
   #add::placeholder { color: var(--faint); }
+  #addBtn {
+    display: none;
+    border: none;
+    border-radius: 999px;
+    background: var(--text);
+    color: var(--bg);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 14px;
+    cursor: pointer;
+    flex: none;
+  }
   .dots { display: flex; gap: 6px; }
   .dot {
     width: 12px; height: 12px;
@@ -272,7 +297,6 @@
   }
   .dot:hover { opacity: .7; }
   .dot.on { opacity: 1; transform: scale(1.15); }
-  .dot.on::after {}
 
   .none { color: var(--faint); font-size: 13px; padding: 18px 0 8px; }
 
@@ -281,24 +305,207 @@
   .ag-date { font-size: 12px; font-weight: 600; color: var(--subtle); letter-spacing: .03em; padding: 22px 0 6px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .ag-date:first-child { padding-top: 6px; }
   .ag-date .today-tag { color: var(--text); font-weight: 500; }
-  #agenda .ev { padding: 11px 0; }
+  #agenda .ev { padding: 11px 0; cursor: pointer; }
 
   footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     margin-top: 28px;
   }
   .hint { font-size: 11.5px; color: var(--faint); }
   kbd { font-family: inherit; }
 
-  @media (max-width: 640px) {
-    body { padding: 24px 12px 32px; }
-    .cell { min-height: 64px; padding: 4px; }
-    .dnum { width: 20px; height: 20px; font-size: 11px; }
-    .pill { font-size: 9.5px; line-height: 1.5; padding: 0 4px; }
-    .pt { display: none; }
-    h1 { font-size: 20px; }
+  /* ---------- sync modal ---------- */
+  .scrim { display: none; }
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,.4);
+  }
+  .modal[hidden] { display: none; }
+  .modal-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.3);
+  }
+  .modal-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .modal-card p { font-size: 13px; line-height: 1.55; color: var(--subtle); margin-bottom: 16px; }
+  .fl { display: block; font-size: 11.5px; font-weight: 600; color: var(--subtle); letter-spacing: .03em; margin-bottom: 6px; }
+  .coderow { display: flex; gap: 8px; margin-bottom: 16px; }
+  .coderow input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--text);
+    background: var(--hover);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 10px;
+  }
+  .btn {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid var(--line);
+    background: var(--text);
+    color: var(--bg);
+    border-radius: 8px;
+    padding: 9px 14px;
+    cursor: pointer;
+    flex: none;
+  }
+  .btn.ghost { background: transparent; color: var(--text); }
+  .modnote { font-size: 12px; color: var(--subtle); margin: 0 0 16px; min-height: 0; }
+  .modal-actions { display: flex; justify-content: flex-end; }
+
+  /* ---------- phones ---------- */
+  @media (hover: none) {
+    .ev .delete, .ev .edit { opacity: .5; padding: 6px 8px; font-size: 17px; }
+  }
+
+  @media (max-width: 720px) {
+    body {
+      padding: 0 10px calc(96px + env(safe-area-inset-bottom));
+      display: block;
+    }
+    main { max-width: none; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg);
+      padding: calc(10px + env(safe-area-inset-top)) 0 8px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { font-size: 19px; }
+    .controls { gap: 0; }
+    .ctl { min-height: 40px; padding: 8px 9px; font-size: 13px; }
+    .ctl.arrow { font-size: 18px; padding: 6px 12px; }
+    .views { margin-left: 4px; }
+    .views button { padding: 8px 10px; font-size: 12px; min-height: 36px; }
+
+    .weekdays span { font-size: 10.5px; }
+    #grid { border-radius: 12px; }
+    .cell { min-height: 58px; padding: 5px 2px; }
+    .dnum { width: 27px; height: 27px; font-size: 13px; margin: 0 auto 4px; }
+    .pills { display: none; }
+    .minidots { display: flex; }
+    .minidot { width: 5.5px; height: 5.5px; }
+
+    /* day list becomes a bottom sheet */
+    .panel {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: 0;
+      max-height: 80vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--bg);
+      border-radius: 18px 18px 0 0;
+      box-shadow: 0 -12px 44px rgba(0,0,0,.24);
+      padding: 0 16px calc(16px + env(safe-area-inset-bottom));
+      transform: translateY(110%);
+      transition: transform .26s ease;
+      z-index: 30;
+      visibility: hidden;
+    }
+    body.sheet-open .panel { transform: translateY(0); visibility: visible; }
+
+    .sheet-grip {
+      display: block;
+      width: 100%;
+      border: 0;
+      background: none;
+      padding: 10px 0 8px;
+      cursor: pointer;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 2;
+    }
+    .sheet-grip::before {
+      content: '';
+      display: block;
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--faint);
+      margin: 0 auto;
+    }
+    .panel-head { margin-bottom: 6px; }
+    h2 { font-size: 16px; }
+
+    .ev { padding: 13px 0; gap: 9px; }
+    .evtime { width: 58px; font-size: 12.5px; }
+    .evtext { font-size: 15.5px; }
+    .composer {
+      position: sticky;
+      bottom: 0;
+      background: var(--bg);
+      padding: 12px 0;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    #add { font-size: 16px; flex-basis: 100%; order: 1; }
+    .composer .plus { display: none; }
+    #addBtn { display: inline-flex; order: 3; margin-left: auto; }
+    .dots { order: 2; gap: 8px; }
+    .dot { width: 16px; height: 16px; }
+    .none { font-size: 14px; padding: 16px 0 20px; }
+
+    .scrim {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.36);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 25;
+    }
+    body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
+    body.sheet-open { overflow: hidden; }
+
+    .ag-date { font-size: 12.5px; padding: 20px 0 8px; }
+    #agenda .ev { padding: 14px 0; }
+
+    footer { margin-top: 20px; }
+    .hint { display: none; }
+
+    .modal { align-items: flex-end; padding: 0; }
+    .modal-card {
+      max-width: none;
+      border-radius: 16px 16px 0 0;
+      padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    }
+    .coderow { flex-direction: column; }
+    .coderow .btn { width: 100%; padding: 12px 14px; }
+    .coderow input { font-size: 14px; padding: 12px; }
+    .modal-actions .btn { width: 100%; padding: 12px; }
+  }
+
+  @media (max-width: 380px) {
+    .cell { min-height: 52px; }
+    .dnum { width: 25px; height: 25px; font-size: 12px; }
+    h1 { font-size: 17px; }
   }
 </style>
 </head>
@@ -320,84 +527,263 @@
   <section id="monthView">
     <div class="weekdays" id="weekdays"></div>
     <div id="grid"></div>
-
-    <div class="panel">
-      <div class="panel-head">
-        <h2 id="selTitle"></h2>
-        <span class="rel" id="selRel"></span>
-      </div>
-      <div id="evlist"></div>
-      <div class="composer">
-        <span class="plus">+</span>
-        <input id="add" type="text" placeholder="Add event — try “3pm Gym”" autocomplete="off" maxlength="200">
-        <div class="dots" id="dots"></div>
-      </div>
-      <p class="none" id="dayEmpty" style="display:none">No events</p>
-    </div>
   </section>
 
   <section id="agenda"></section>
 
   <footer>
     <span class="hint"><kbd>←</kbd> <kbd>→</kbd> months · <kbd>T</kbd> today</span>
-    <button class="ctl" id="theme">Theme</button>
+    <div style="display:flex;gap:4px;align-items:center;margin-left:auto">
+      <button class="ctl" id="sync">Sync</button>
+      <button class="ctl" id="theme">Theme</button>
+    </div>
   </footer>
 </main>
 
+<div class="scrim" id="scrim"></div>
+
+<!-- day panel: inline on desktop, bottom sheet on phones -->
+<div class="panel" id="panel">
+  <button class="sheet-grip" id="sheetClose" aria-label="Close day details"></button>
+  <div class="panel-head">
+    <h2 id="selTitle"></h2>
+    <span class="rel" id="selRel"></span>
+  </div>
+  <div id="evlist"></div>
+  <div class="composer">
+    <span class="plus">+</span>
+    <input id="add" type="text" placeholder="Add event — try “3pm Gym”" autocomplete="off" maxlength="200">
+    <div class="dots" id="dots"></div>
+    <button id="addBtn">Add</button>
+  </div>
+  <p class="none" id="dayEmpty" style="display:none">No events</p>
+</div>
+
+<div class="modal" id="syncModal" role="dialog" aria-modal="true" aria-labelledby="syncTitle" hidden>
+  <div class="modal-card">
+    <h3 id="syncTitle">Sync across devices</h3>
+    <p>Your plans are stored with a sync code. Open this calendar on your phone and connect it with the same code to see the same events on both.</p>
+
+    <label class="fl" for="syncCode">This device's sync code</label>
+    <div class="coderow">
+      <input id="syncCode" readonly aria-label="Your sync code">
+      <button class="btn" id="copyCode">Copy</button>
+    </div>
+
+    <label class="fl" for="joinCode">Connect to another calendar</label>
+    <div class="coderow">
+      <input id="joinCode" placeholder="Paste a sync code" spellcheck="false" autocomplete="off" aria-label="Sync code to connect to">
+      <button class="btn" id="joinBtn">Connect</button>
+    </div>
+
+    <p class="modnote" id="syncNote"></p>
+    <div class="modal-actions"><button class="btn ghost" id="closeSync">Done</button></div>
+  </div>
+</div>
+
 <script>
 (() => {
+  'use strict';
+
+  // ---------- config ----------
+  const SYNC_API = 'https://site-f2e172396f6749d29174b466ee74f1c7.freebuff.page';
+  const STORE_EVENTS = 'cal-events';
+  const STORE_KEY = 'cal-sync-key';
+  const COLORS = { 1: '--ev-1', 2: '--ev-2', 3: '--ev-3', 4: '--ev-4', 5: '--ev-5' };
+
   const $ = s => document.querySelector(s);
   const grid = $('#grid'), add = $('#add'), evlist = $('#evlist');
+  const narrow = () => window.matchMedia('(max-width: 720px)').matches;
 
-  let events = JSON.parse(localStorage.getItem('cal-events') || '[]');
-  const save = () => localStorage.setItem('cal-events', JSON.stringify(events));
+  // ---------- local storage ----------
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 
-  // ---------- state ----------
+  function loadEvents() {
+    let raw = [];
+    try { raw = JSON.parse(localStorage.getItem(STORE_EVENTS) || '[]'); } catch (e) { raw = []; }
+    if (!Array.isArray(raw)) raw = [];
+    return raw.filter(e => e && typeof e === 'object').map(e => {
+      const rec = {
+        id: typeof e.id === 'string' ? e.id : uid(),
+        date: e.date,
+        time: typeof e.time === 'string' ? e.time : '',
+        text: String(e.text || '').slice(0, 200),
+        color: COLORS[String(e.color)] ? String(e.color) : '1',
+        mtime: Number.isFinite(e.mtime) ? e.mtime : 0
+      };
+      if (e.deleted) rec.deleted = true;
+      return rec;
+    }).filter(e => /^\d{4}-\d{2}-\d{2}$/.test(e.date || ''));
+  }
+
+  let events = loadEvents();               // includes tombstones (deleted: true)
+  let syncKey = '';
+  let pushTimer = null;
+  let syncing = false;
+
+  const saveEvents = () => localStorage.setItem(STORE_EVENTS, JSON.stringify(events));
+  const visible = () => events.filter(e => !e.deleted);
+
+  // ---------- date helpers ----------
   const today = new Date();
-  let view = 'month';
-  let curY = today.getFullYear(), curM = today.getMonth(); // shown month
-  const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  let sel = key(today);          // selected date key
-  let color = '1';               // composer color
-  let editingId = null;
+  const key = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayKey = key(today);
+  const parseKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
 
-  const COLORS = {1:'--ev-1',2:'--ev-2',3:'--ev-3',4:'--ev-4',5:'--ev-5'};
-
-  const byDate = {};
-  events.forEach(e => (byDate[e.date] = byDate[e.date] || []).push(e));
-  Object.values(byDate).forEach(list =>
-    list.sort((a,b) => (a.time||'').localeCompare(b.time||'') || a.text.localeCompare(b.text)));
-
-  const parseKey = k => { const [y,m,d] = k.split('-').map(Number); return new Date(y, m-1, d); };
   const fmtTime = t => {
     if (!t) return 'All-day';
-    const [h,m] = t.split(':').map(Number);
-    return new Date(2000,0,1,h,m).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    const [h, m] = t.split(':').map(Number);
+    return new Date(2000, 0, 1, h, m).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   };
 
   // parse leading time token: "3pm Gym", "14:30 standup", "9:15 am call"
   function splitTime(str) {
     const m = str.match(/^\s*(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b[\s,–-]*/i);
-    if (!m) return { time:'', text:str.trim() };
+    if (!m) return { time: '', text: str.trim() };
     let h = +m[1];
     const mm = m[2] ? +m[2] : 0;
     const ap = m[3] && m[3].toLowerCase();
     const looksLikeTime = ap || (m[2] && h <= 23 && mm < 60);
-    if (!looksLikeTime) return { time:'', text:str.trim() };
+    if (!looksLikeTime) return { time: '', text: str.trim() };
     if (ap === 'pm' && h < 12) h += 12;
     if (ap === 'am' && h === 12) h = 0;
-    if (h > 23 || mm > 59) return { time:'', text:str.trim() };
-    return { time:`${String(h).padStart(2,'0')}:${String(mm).padStart(2,'0')}`,
-             text:str.slice(m[0].length).trim() || str.trim() };
+    if (h > 23 || mm > 59) return { time: '', text: str.trim() };
+    return {
+      time: `${String(h).padStart(2, '0')}:${String(mm).padStart(2, '0')}`,
+      text: str.slice(m[0].length).trim() || str.trim()
+    };
+  }
+
+  // ---------- state ----------
+  let view = 'month';
+  let curY = today.getFullYear(), curM = today.getMonth();
+  let sel = todayKey;
+  let color = '1';
+  let editingId = null;
+
+  const byDate = {};
+  function reindex() {
+    for (const k in byDate) delete byDate[k];
+    for (const e of visible()) (byDate[e.date] = byDate[e.date] || []).push(e);
+    Object.values(byDate).forEach(list =>
+      list.sort((a, b) => (a.time || '').localeCompare(b.time || '') || a.text.localeCompare(b.text)));
+  }
+
+  // ---------- sync ----------
+  const syncLabel = $('#sync');
+  let syncState = 'idle';
+
+  function randomKey() {
+    const bytes = new Uint8Array(32);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
+    else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function ensureKey() {
+    let k = localStorage.getItem(STORE_KEY);
+    if (!k || !/^[a-f0-9]{64}$/.test(k)) {
+      k = randomKey();
+      localStorage.setItem(STORE_KEY, k);
+    }
+    return k;
+  }
+
+  function setSyncState(state) {
+    syncState = state;
+    const label = state === 'synced' ? 'Synced'
+      : state === 'syncing' ? 'Syncing…'
+      : state === 'error' ? 'Sync issue'
+      : 'Sync';
+    syncLabel.textContent = label;
+    syncLabel.title = state === 'error'
+      ? 'Could not reach the sync server — your events are still saved on this device'
+      : state === 'synced' ? 'All devices using this code are up to date' : 'Sync across devices';
+  }
+
+  async function api(method, body) {
+    const res = await fetch(`${SYNC_API}/api/events`, {
+      method,
+      headers: { 'content-type': 'application/json', 'x-sync-key': syncKey },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: 'no-store'
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  // Merge remote records into local state by newest mtime per event id.
+  function mergeRemote(remoteItems) {
+    if (!Array.isArray(remoteItems)) return false;
+    const map = new Map();
+    for (const rec of events) map.set(rec.id, rec);
+    let changed = false;
+    for (const raw of remoteItems) {
+      if (!raw || typeof raw.id !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw.date || '')) continue;
+      const rec = {
+        id: raw.id,
+        date: raw.date,
+        time: typeof raw.time === 'string' ? raw.time : '',
+        text: String(raw.text || '').slice(0, 200),
+        color: COLORS[String(raw.color)] ? String(raw.color) : '1',
+        mtime: Number.isFinite(raw.mtime) ? raw.mtime : 0
+      };
+      if (raw.deleted) rec.deleted = true;
+      const prev = map.get(rec.id);
+      if (!prev || rec.mtime > prev.mtime) { map.set(rec.id, rec); changed = true; }
+    }
+    if (changed) {
+      events = Array.from(map.values());
+      saveEvents();
+      refresh();
+    }
+    return changed;
+  }
+
+  async function pull() {
+    if (!syncKey || syncing) return;
+    syncing = true;
+    setSyncState('syncing');
+    try {
+      const data = await api('GET');
+      mergeRemote(data.items);
+      setSyncState('synced');
+    } catch (err) {
+      setSyncState('error');
+    } finally {
+      syncing = false;
+    }
+  }
+
+  let pushQueued = false;
+  async function push() {
+    if (!syncKey) return;
+    if (syncing) { pushQueued = true; return; }
+    syncing = true;
+    setSyncState('syncing');
+    try {
+      const data = await api('PUT', { items: events });
+      mergeRemote(data.items);
+      setSyncState('synced');
+    } catch (err) {
+      setSyncState('error');
+    } finally {
+      syncing = false;
+      if (pushQueued) { pushQueued = false; queuePush(); }
+    }
+  }
+
+  function queuePush() {
+    if (!syncKey) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(push, 500);
   }
 
   // ---------- header ----------
   function renderTitle() {
-    const d = new Date(curY, curM, 1);
-    const label = d.toLocaleDateString(undefined, { month:'long' });
-    $('#title').innerHTML = view === 'month'
-      ? `${label} <span class="year">${curY}</span>`
-      : `Agenda`;
+    if (view === 'agenda') { $('#title').textContent = 'Agenda'; return; }
+    const label = new Date(curY, curM, 1).toLocaleDateString(undefined, { month: 'long' });
+    $('#title').innerHTML = `${label} <span class="year">${curY}</span>`;
   }
 
   function setView(v) {
@@ -406,17 +792,17 @@
       b.classList.toggle('active', b.dataset.view === v));
     $('#monthView').style.display = v === 'month' ? 'block' : 'none';
     $('#agenda').style.display = v === 'agenda' ? 'block' : 'none';
+    closeSheet();
     render();
   }
-  document.querySelectorAll('.views button').forEach(b =>
-    b.onclick = () => setView(b.dataset.view));
+  document.querySelectorAll('.views button').forEach(b => b.onclick = () => setView(b.dataset.view));
 
   $('#prev').onclick = () => { curM--; if (curM < 0) { curM = 11; curY--; } render(); };
   $('#next').onclick = () => { curM++; if (curM > 11) { curM = 0; curY++; } render(); };
   $('#today').onclick = () => {
     curY = today.getFullYear(); curM = today.getMonth();
-    sel = key(today);
-    if (view !== 'month') setView('month'); else render();
+    sel = todayKey;
+    if (view !== 'month') setView('month'); else { render(); if (narrow()) openSheet(); }
   };
 
   // ---------- month grid ----------
@@ -432,11 +818,16 @@
       const d = new Date(curY, curM, start + i);
       const k = key(d);
       const inMonth = d.getMonth() === curM;
-      const isToday = k === key(today);
+      const isToday = k === todayKey;
       const cell = document.createElement('div');
       cell.className = 'cell' + (inMonth ? '' : ' other') +
                        (isToday ? ' today' : '') + (k === sel ? ' sel' : '');
-      cell.onclick = () => { sel = k; render(); };
+      cell.onclick = () => {
+        sel = k;
+        render();
+        $('#panel').scrollTop = 0;
+        if (narrow()) openSheet();
+      };
 
       const num = document.createElement('div');
       num.className = 'dnum';
@@ -444,6 +835,7 @@
       cell.append(num);
 
       const list = byDate[k] || [];
+
       const pills = document.createElement('div');
       pills.className = 'pills';
       list.slice(0, 3).forEach(e => {
@@ -457,7 +849,7 @@
           p.append(t);
         }
         p.append(e.text);
-        p.onclick = ev => { ev.stopPropagation(); sel = k; render(); };
+        p.onclick = ev => { ev.stopPropagation(); sel = k; render(); if (narrow()) openSheet(); };
         pills.append(p);
       });
       if (list.length > 3) {
@@ -467,6 +859,17 @@
         pills.append(more);
       }
       cell.append(pills);
+
+      const mini = document.createElement('div');
+      mini.className = 'minidots';
+      list.slice(0, 4).forEach(e => {
+        const dot = document.createElement('span');
+        dot.className = 'minidot';
+        dot.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
+        mini.append(dot);
+      });
+      cell.append(mini);
+
       grid.append(cell);
     }
   }
@@ -475,7 +878,7 @@
   function renderPanel() {
     const d = parseKey(sel);
     $('#selTitle').textContent = d.toLocaleDateString(undefined,
-      { weekday:'long', month:'long', day:'numeric' });
+      { weekday: 'long', month: 'long', day: 'numeric' });
     const diff = Math.round((d - new Date(today.getFullYear(), today.getMonth(), today.getDate())) / 864e5);
     $('#selRel').textContent = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' :
                                diff === -1 ? 'Yesterday' : '';
@@ -487,24 +890,32 @@
     list.forEach(e => {
       const row = document.createElement('div');
       row.className = 'ev';
+      row.dataset.id = e.id;
       row.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
 
-      row.append(Object.assign(document.createElement('span'), {className:'evdot'}));
+      row.append(Object.assign(document.createElement('span'), { className: 'evdot' }));
       row.append(Object.assign(document.createElement('span'),
-        {className:'evtime', textContent: fmtTime(e.time)}));
+        { className: 'evtime', textContent: fmtTime(e.time) }));
 
       const txt = Object.assign(document.createElement('span'),
-        {className:'evtext', textContent: e.text, title: 'Click to edit'});
+        { className: 'evtext', textContent: e.text, title: 'Tap ✎ or double-click to edit' });
       txt.ondblclick = () => startEdit(e);
       row.append(txt);
 
+      const edit = document.createElement('button');
+      edit.className = 'edit';
+      edit.textContent = '✎';
+      edit.setAttribute('aria-label', 'Edit event');
+      edit.onclick = () => startEdit(e);
+      row.append(edit);
+
       const del = document.createElement('button');
-      del.className = 'delete'; del.textContent = '×';
-      del.setAttribute('aria-label','Delete');
-      del.onclick = () => {
-        events = events.filter(x => x.id !== e.id); save(); refresh();
-      };
+      del.className = 'delete';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'Delete event');
+      del.onclick = () => removeEvent(e.id);
       row.append(del);
+
       evlist.append(row);
     });
   }
@@ -512,17 +923,21 @@
   function startEdit(e) {
     if (editingId) render();
     editingId = e.id;
-    const row = [...evlist.children].find(r => r.querySelector('.evtext')?.textContent === e.text);
+    const row = evlist.querySelector(`.ev[data-id="${e.id}"]`);
     if (!row) return;
     row.innerHTML = '';
     const inp = document.createElement('input');
     inp.className = 'evtext-input';
     inp.value = (e.time ? fmtTime(e.time) + ' ' : '') + e.text;
     inp.maxLength = 200;
+    inp.setAttribute('aria-label', 'Event text');
     const commit = () => {
-      const {time, text} = splitTime(inp.value);
-      if (text) { e.text = text; if (time) e.time = time; }
-      editingId = null; save(); refresh();
+      const { time, text } = splitTime(inp.value);
+      if (text) {
+        patchEvent(e.id, { text, time: time || e.time });
+      }
+      editingId = null;
+      render();
     };
     inp.onkeydown = ev => {
       if (ev.key === 'Enter') commit();
@@ -530,7 +945,28 @@
     };
     inp.onblur = commit;
     row.append(inp);
-    inp.focus(); inp.select();
+    inp.focus();
+    inp.select();
+  }
+
+  // ---------- mutations ----------
+  function patchEvent(id, changes) {
+    const e = events.find(x => x.id === id && !x.deleted);
+    if (!e) return;
+    Object.assign(e, changes, { mtime: Date.now() });
+    saveEvents();
+    refresh();
+    queuePush();
+  }
+
+  function removeEvent(id) {
+    const e = events.find(x => x.id === id);
+    if (!e) return;
+    e.deleted = true;
+    e.mtime = Date.now();
+    saveEvents();
+    refresh();
+    queuePush();
   }
 
   // ---------- composer ----------
@@ -540,34 +976,38 @@
     b.className = 'dot' + (i === 1 ? ' on' : '');
     b.style.setProperty('--pc', `var(${COLORS[i]})`);
     b.setAttribute('aria-label', `Color ${i}`);
-    b.onclick = () => { color = String(i);
-      dots.querySelectorAll('.dot').forEach((d,j) => d.classList.toggle('on', j === i-1)); };
+    b.onclick = () => {
+      color = String(i);
+      dots.querySelectorAll('.dot').forEach((d, j) => d.classList.toggle('on', j === i - 1));
+    };
     dots.append(b);
   }
 
   function addEvent() {
     const v = add.value.trim();
-    if (!v) return;
-    const {time, text} = splitTime(v);
-    events.push({ id: Date.now() + '' + Math.random().toString(36).slice(2,6),
-                  date: sel, time, text, color });
+    if (!v) { add.focus(); return; }
+    const { time, text } = splitTime(v);
+    events.push({ id: uid(), date: sel, time, text, color, mtime: Date.now() });
     add.value = '';
-    save();
+    saveEvents();
     refresh();
+    queuePush();
+    if (!narrow()) add.focus();
   }
   add.onkeydown = e => {
     if (e.key === 'Enter') addEvent();
     if (e.key === 'Escape') { add.value = ''; add.blur(); }
   };
+  $('#addBtn').onclick = addEvent;
 
   // ---------- agenda ----------
   function renderAgenda() {
     const ag = $('#agenda');
     ag.innerHTML = '';
     const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const upcoming = events
+    const upcoming = visible()
       .filter(e => e.date >= key(start))
-      .sort((a,b) => a.date.localeCompare(b.date) || (a.time||'').localeCompare(b.time||''));
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''));
 
     if (!upcoming.length) {
       ag.innerHTML = '<p class="none" style="padding-top:32px">Nothing scheduled</p>';
@@ -580,34 +1020,65 @@
         const d = parseKey(e.date);
         const h = document.createElement('div');
         h.className = 'ag-date';
-        const isToday = e.date === key(start);
+        const isToday = e.date === todayKey;
         h.innerHTML = d.toLocaleDateString(undefined,
-          { weekday:'short', month:'short', day:'numeric' }) + (isToday ? ' · <span class="today-tag">Today</span>' : '');
-        h.onclick = () => {
-          const [y,m] = e.date.split('-').map(Number);
-          curY = y; curM = m - 1; sel = e.date; setView('month');
-        };
+          { weekday: 'short', month: 'short', day: 'numeric' }) +
+          (isToday ? ' · <span class="today-tag">Today</span>' : '');
+        h.onclick = () => jumpTo(e.date);
         ag.append(h);
       }
       const row = document.createElement('div');
       row.className = 'ev';
       row.style.setProperty('--pc', `var(${COLORS[e.color || '1']})`);
-      row.append(Object.assign(document.createElement('span'), {className:'evdot'}));
+      row.append(Object.assign(document.createElement('span'), { className: 'evdot' }));
       row.append(Object.assign(document.createElement('span'),
-        {className:'evtime', textContent: fmtTime(e.time)}));
+        { className: 'evtime', textContent: fmtTime(e.time) }));
       row.append(Object.assign(document.createElement('span'),
-        {className:'evtext', textContent: e.text}));
+        { className: 'evtext', textContent: e.text }));
+      row.onclick = () => jumpTo(e.date);
       ag.append(row);
     });
   }
 
-  // ---------- render & shortcuts ----------
+  function jumpTo(dateKey) {
+    const [y, m] = dateKey.split('-').map(Number);
+    curY = y; curM = m - 1; sel = dateKey;
+    setView('month');
+    if (narrow()) openSheet();
+  }
+
+  // ---------- sheet ----------
+  function openSheet() {
+    if (!narrow()) return;
+    document.body.classList.add('sheet-open');
+  }
+  function closeSheet() {
+    document.body.classList.remove('sheet-open');
+  }
+  $('#sheetClose').onclick = closeSheet;
+  $('#scrim').onclick = closeSheet;
+
+  // swipe between months on touch
+  let touchX = 0, touchY = 0, tracking = false;
+  grid.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    tracking = true;
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }, { passive: true });
+  grid.addEventListener('touchend', e => {
+    if (!tracking) return;
+    tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchX, dy = t.clientY - touchY;
+    if (Math.abs(dx) > 55 && Math.abs(dy) < 45) {
+      if (dx < 0) $('#next').click(); else $('#prev').click();
+    }
+  }, { passive: true });
+
+  // ---------- render ----------
   function refresh() {
-    // rebuild index
-    for (const k in byDate) delete byDate[k];
-    events.forEach(e => (byDate[e.date] = byDate[e.date] || []).push(e));
-    Object.values(byDate).forEach(l =>
-      l.sort((a,b) => (a.time||'').localeCompare(b.time||'') || a.text.localeCompare(b.text)));
+    reindex();
     render();
   }
 
@@ -622,17 +1093,72 @@
   for (let i = 0; i < 7; i++) {
     const d = new Date(2024, 0, 1 + i); // 2024-01-01 is a Monday
     const s = document.createElement('span');
-    s.textContent = d.toLocaleDateString(undefined, { weekday:'short' }).slice(0,2);
+    s.textContent = d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2);
     wd.append(s);
   }
 
   document.addEventListener('keydown', e => {
-    const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
-    if (typing) return;
+    if (e.key === 'Escape') {
+      if (!$('#syncModal').hidden) { closeSyncModal(); return; }
+      closeSheet();
+    }
+    const t = document.activeElement;
+    if (t && /INPUT|TEXTAREA/.test(t.tagName)) return;
+    if (!$('#syncModal').hidden) return;
     if (e.key === 'ArrowLeft') $('#prev').click();
     if (e.key === 'ArrowRight') $('#next').click();
     if (e.key.toLowerCase() === 't') $('#today').click();
   });
+
+  // ---------- sync modal ----------
+  const modal = $('#syncModal');
+  const note = $('#syncNote');
+
+  function openSyncModal() {
+    $('#syncCode').value = syncKey;
+    $('#joinCode').value = '';
+    note.textContent = syncState === 'error'
+      ? 'Server unreachable right now. Events stay saved on this device and sync when it reconnects.'
+      : 'Keep this code private — it is the only key to your events.';
+    modal.hidden = false;
+    if (narrow()) closeSheet();
+    $('#syncCode').scrollLeft = 0;
+  }
+  function closeSyncModal() { modal.hidden = true; }
+
+  $('#sync').onclick = openSyncModal;
+  $('#closeSync').onclick = closeSyncModal;
+  modal.onclick = e => { if (e.target === modal) closeSyncModal(); };
+
+  $('#copyCode').onclick = async () => {
+    const code = $('#syncCode');
+    try {
+      await navigator.clipboard.writeText(syncKey);
+      note.textContent = 'Copied. Paste it on your other device under “Connect to another calendar”.';
+    } catch (err) {
+      code.removeAttribute('readonly');
+      code.select();
+      note.textContent = 'Press Ctrl/Cmd + C to copy the selected code.';
+    }
+  };
+
+  $('#joinBtn').onclick = async () => {
+    const raw = $('#joinCode').value.trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(raw)) {
+      note.textContent = 'That code looks incomplete — a sync code is 64 characters long.';
+      return;
+    }
+    if (raw === syncKey) { note.textContent = 'This device already uses that code.'; return; }
+    syncKey = raw;
+    localStorage.setItem(STORE_KEY, syncKey);
+    $('#syncCode').value = syncKey;
+    $('#joinCode').value = '';
+    note.textContent = 'Connected. Pulling events…';
+    await pull();
+    await push();          // merges the events already on this device into that calendar
+    note.textContent = 'Connected. This device now shares events with every device using this code.';
+    render();
+  };
 
   // ---------- theme ----------
   const themeBtn = $('#theme');
@@ -644,12 +1170,30 @@
   themeBtn.onclick = () => {
     const cur = document.documentElement.dataset.theme ||
       (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    applyTheme(cur === 'dark' ? 'light' : 'dark');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    themeBtn.textContent = next === 'dark' ? 'Light' : 'Dark';
   };
-  const saved = localStorage.getItem('theme');
-  if (saved) { applyTheme(saved); themeBtn.textContent = saved === 'dark' ? 'Light' : 'Dark'; }
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    applyTheme(savedTheme);
+    themeBtn.textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
+  }
 
+  // ---------- init ----------
+  syncKey = ensureKey();
+  reindex();
   render();
+  setSyncState('idle');
+  pull().then(push);
+
+  // keep devices in step
+  setInterval(() => { if (document.visibilityState === 'visible') pull(); }, 20000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pull();
+  });
+  window.addEventListener('focus', () => pull());
+  window.addEventListener('online', () => { pull().then(push); });
 })();
 </script>
 </body>
