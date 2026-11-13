@@ -209,12 +209,12 @@
   .minidot { width: 5px; height: 5px; border-radius: 50%; background: var(--pc); }
 
   /* ---------- day panel ---------- */
-  .panel { margin-top: 22px; }
+  .panel { margin-top: 28px; }
   .panel-head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 2px;
+    margin-bottom: 8px;
     gap: 8px;
   }
   h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
@@ -527,6 +527,23 @@
   <section id="monthView">
     <div class="weekdays" id="weekdays"></div>
     <div id="grid"></div>
+
+    <!-- day panel: inline under the grid on desktop, bottom sheet on phones -->
+    <div class="panel" id="panel">
+      <button class="sheet-grip" id="sheetClose" aria-label="Close day details"></button>
+      <div class="panel-head">
+        <h2 id="selTitle"></h2>
+        <span class="rel" id="selRel"></span>
+      </div>
+      <div id="evlist"></div>
+      <div class="composer">
+        <span class="plus">+</span>
+        <input id="add" type="text" placeholder="Add event — try “3pm Gym”" autocomplete="off" maxlength="200">
+        <div class="dots" id="dots"></div>
+        <button id="addBtn">Add</button>
+      </div>
+      <p class="none" id="dayEmpty" style="display:none">No events</p>
+    </div>
   </section>
 
   <section id="agenda"></section>
@@ -542,27 +559,10 @@
 
 <div class="scrim" id="scrim"></div>
 
-<!-- day panel: inline on desktop, bottom sheet on phones -->
-<div class="panel" id="panel">
-  <button class="sheet-grip" id="sheetClose" aria-label="Close day details"></button>
-  <div class="panel-head">
-    <h2 id="selTitle"></h2>
-    <span class="rel" id="selRel"></span>
-  </div>
-  <div id="evlist"></div>
-  <div class="composer">
-    <span class="plus">+</span>
-    <input id="add" type="text" placeholder="Add event — try “3pm Gym”" autocomplete="off" maxlength="200">
-    <div class="dots" id="dots"></div>
-    <button id="addBtn">Add</button>
-  </div>
-  <p class="none" id="dayEmpty" style="display:none">No events</p>
-</div>
-
 <div class="modal" id="syncModal" role="dialog" aria-modal="true" aria-labelledby="syncTitle" hidden>
   <div class="modal-card">
     <h3 id="syncTitle">Sync across devices</h3>
-    <p>Your plans are stored with a sync code. Open this calendar on your phone and connect it with the same code to see the same events on both.</p>
+    <p>Your plans are stored with a short sync code. Open this calendar on your phone, tap Sync and enter the same code to see the same events on both.</p>
 
     <label class="fl" for="syncCode">This device's sync code</label>
     <div class="coderow">
@@ -572,7 +572,7 @@
 
     <label class="fl" for="joinCode">Connect to another calendar</label>
     <div class="coderow">
-      <input id="joinCode" placeholder="Paste a sync code" spellcheck="false" autocomplete="off" aria-label="Sync code to connect to">
+      <input id="joinCode" placeholder="e.g. k7m4-p2qx" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Sync code to connect to">
       <button class="btn" id="joinBtn">Connect</button>
     </div>
 
@@ -673,20 +673,27 @@
   const syncLabel = $('#sync');
   let syncState = 'idle';
 
+  // Short, typeable sync code: 8 characters from an unambiguous alphabet.
+  const CODE_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
+
   function randomKey() {
-    const bytes = new Uint8Array(32);
+    const bytes = new Uint8Array(8);
     if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(bytes);
     else for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(bytes).map(b => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('');
   }
 
+  const normalizeKey = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const isShortKey = k => /^[a-z0-9]{8}$/.test(k);
+  const isLegacyKey = k => /^[a-f0-9]{64}$/.test(k);
+  const formatKey = k => (isShortKey(k) ? `${k.slice(0, 4)}-${k.slice(4)}` : k);
+
   function ensureKey() {
-    let k = localStorage.getItem(STORE_KEY);
-    if (!k || !/^[a-f0-9]{64}$/.test(k)) {
-      k = randomKey();
-      localStorage.setItem(STORE_KEY, k);
-    }
-    return k;
+    const stored = normalizeKey(localStorage.getItem(STORE_KEY) || '');
+    if (isShortKey(stored) || isLegacyKey(stored)) return stored;
+    const fresh = randomKey();
+    localStorage.setItem(STORE_KEY, fresh);
+    return fresh;
   }
 
   function setSyncState(state) {
@@ -1115,7 +1122,7 @@
   const note = $('#syncNote');
 
   function openSyncModal() {
-    $('#syncCode').value = syncKey;
+    $('#syncCode').value = formatKey(syncKey);
     $('#joinCode').value = '';
     note.textContent = syncState === 'error'
       ? 'Server unreachable right now. Events stay saved on this device and sync when it reconnects.'
@@ -1133,7 +1140,7 @@
   $('#copyCode').onclick = async () => {
     const code = $('#syncCode');
     try {
-      await navigator.clipboard.writeText(syncKey);
+      await navigator.clipboard.writeText(formatKey(syncKey));
       note.textContent = 'Copied. Paste it on your other device under “Connect to another calendar”.';
     } catch (err) {
       code.removeAttribute('readonly');
@@ -1143,15 +1150,15 @@
   };
 
   $('#joinBtn').onclick = async () => {
-    const raw = $('#joinCode').value.trim().toLowerCase();
-    if (!/^[a-f0-9]{64}$/.test(raw)) {
-      note.textContent = 'That code looks incomplete — a sync code is 64 characters long.';
+    const raw = normalizeKey($('#joinCode').value);
+    if (!isShortKey(raw) && !isLegacyKey(raw)) {
+      note.textContent = 'That code does not look right — it should be 8 characters, like k7m4-p2qx.';
       return;
     }
     if (raw === syncKey) { note.textContent = 'This device already uses that code.'; return; }
     syncKey = raw;
     localStorage.setItem(STORE_KEY, syncKey);
-    $('#syncCode').value = syncKey;
+    $('#syncCode').value = formatKey(syncKey);
     $('#joinCode').value = '';
     note.textContent = 'Connected. Pulling events…';
     await pull();
@@ -1185,7 +1192,21 @@
   reindex();
   render();
   setSyncState('idle');
-  pull().then(push);
+
+  (async () => {
+    // Older builds used a 64-character code. Pull whatever is stored there,
+    // then move the whole calendar onto a short code.
+    if (isLegacyKey(syncKey)) {
+      await pull();
+      const fresh = randomKey();
+      syncKey = fresh;
+      localStorage.setItem(STORE_KEY, fresh);
+      await push();
+    } else {
+      await pull();
+      await push();
+    }
+  })();
 
   // keep devices in step
   setInterval(() => { if (document.visibilityState === 'visible') pull(); }, 20000);

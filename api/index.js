@@ -1,9 +1,10 @@
 // Tiny sync API for the calendar app.
 //
-// Storage model: one row per sync key (a 256-bit random hex string the
-// browser generates). Each row holds a map of event id -> record, where a
-// record with deleted: true is a tombstone so deletes propagate to every
-// device instead of being resurrected by a stale push.
+// Storage model: one row per sync key. The browser generates a short
+// 8-character code (legacy 64-character hex codes are still accepted). Each
+// row holds a map of event id -> record, where a record with deleted: true is
+// a tombstone so deletes propagate to every device instead of being
+// resurrected by a stale push.
 
 const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS calendars (
   k TEXT PRIMARY KEY,
@@ -123,8 +124,8 @@ export default {
       return reply({ error: 'not_found' }, 404);
     }
 
-    const key = (request.headers.get('x-sync-key') || '').toLowerCase();
-    if (!/^[a-f0-9]{64}$/.test(key)) {
+    const key = (request.headers.get('x-sync-key') || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!/^[a-z0-9]{8}$/.test(key) && !/^[a-f0-9]{64}$/.test(key)) {
       return reply({ error: 'invalid_sync_key' }, 400);
     }
 
